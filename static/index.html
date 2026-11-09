@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clinical file annotation – demo</title>
+<style>
+:root{--bg:#f4f3ef;--panel:#fff;--ink:#1d2430;--mute:#6b7280;--line:#dcd9d2;--accent:#2f6fb3;
+ --symptom:#2f6fb3;--diagnosis:#7b4bb3;--event:#c2681b;--substance:#2c8a57;--medication:#0f8b8d;--measurement:#6b7280}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg)}
+header{height:48px;display:flex;align-items:center;gap:14px;padding:0 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:15px;margin:0 8px 0 0;font-weight:650}
+header label{color:var(--mute);font-size:12px}
+header select,header input{margin-left:4px}
+#status{margin-left:auto;color:var(--mute);font-size:12px}
+main{display:grid;grid-template-columns:200px minmax(360px,1fr) 480px;height:calc(100vh - 48px)}
+section{overflow:auto;background:var(--panel);border-right:1px solid var(--line)}
+#right{border-right:0;background:var(--bg)}
+/* doc list */
+#doclist{padding:6px}
+.doc{padding:8px 9px;border-radius:7px;cursor:pointer;border:1px solid transparent}
+.doc:hover{background:#f1f0ec}
+.doc.active{background:#e6eef8;border-color:#bcd3ee}
+.doc .d{font-weight:600}
+.doc .t{color:var(--mute);font-size:12px}
+.doc .n{float:right;background:var(--accent);color:#fff;border-radius:9px;padding:0 7px;font-size:11px}
+.doc.skip{opacity:.5}
+/* reader */
+#docbar{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:9px 20px;z-index:2}
+#docbar .title{font-weight:650}
+#docbar .sub{color:var(--mute);font-size:12px}
+#docbar label{font-size:12px;margin-right:14px}
+#reader{padding:18px 22px 60px;font:15.5px/1.7 Georgia,'Times New Roman',serif;white-space:pre-wrap;max-width:760px}
+.hl{border-radius:3px;cursor:pointer;padding:1px 0}
+.hl-symptom{background:#cfe3f7}.hl-diagnosis{background:#e3d6f3}.hl-event{background:#f6dfc6}
+.hl-substance{background:#cdebd9}.hl-medication{background:#cbeaeb}.hl-measurement{background:#e2e3e6}
+.hl.active{outline:2px solid var(--ink)}
+.legend{font-size:11px;color:var(--mute);padding:0 22px 8px}
+.legend span{padding:1px 6px;border-radius:3px;margin-right:4px}
+/* right */
+nav{display:flex;gap:2px;padding:8px 10px 0;background:var(--bg);position:sticky;top:0;z-index:3}
+nav button{border:1px solid var(--line);border-bottom:0;background:#e9e7e1;padding:7px 11px;border-radius:7px 7px 0 0;cursor:pointer;font:inherit}
+nav button.on{background:var(--panel);font-weight:650}
+.tab{background:var(--panel);margin:0 10px 14px;padding:12px;border:1px solid var(--line);border-radius:0 7px 7px 7px}
+.selbar{font-size:12px;background:#fff8e1;border:1px solid #efdca0;border-radius:6px;padding:6px 9px;margin-bottom:10px;max-height:64px;overflow:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.grid label{display:flex;flex-direction:column;font-size:11.5px;color:var(--mute);gap:2px}
+.grid .full{grid-column:1/-1}
+.grid .chk{flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-size:12.5px}
+select,input[type=text],input[type=number],textarea{font:inherit;color:var(--ink);padding:5px 6px;border:1px solid var(--line);border-radius:5px;background:#fff;width:100%}
+textarea{min-height:64px;resize:vertical}
+.hint{font-size:11.5px;color:var(--mute);background:#f7f6f2;border-radius:5px;padding:4px 7px}
+.btns{display:flex;gap:8px;margin-top:10px}
+button.pri{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;font:inherit;font-weight:600}
+button.sec{background:#fff;border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;font:inherit}
+button.danger{color:#b3261e}
+h3{margin:16px 0 6px;font-size:13px}
+.card{border:1px solid var(--line);border-left:4px solid var(--mute);border-radius:6px;padding:6px 9px;margin-bottom:6px;cursor:pointer;background:#fff}
+.card:hover{background:#fafaf8}
+.card.active{outline:2px solid var(--ink)}
+.card.c-symptom{border-left-color:var(--symptom)}.card.c-diagnosis{border-left-color:var(--diagnosis)}
+.card.c-event{border-left-color:var(--event)}.card.c-substance{border-left-color:var(--substance)}
+.card.c-medication{border-left-color:var(--medication)}.card.c-measurement{border-left-color:var(--measurement)}
+.card .top{display:flex;gap:6px;align-items:baseline}
+.card .top b{font-weight:600}
+.card .x{margin-left:auto;border:0;background:none;color:var(--mute);cursor:pointer;font-size:15px}
+.card .m{font-size:11.5px;color:var(--mute)}
+.card blockquote{margin:3px 0 0;font-size:12px;color:#444;border-left:2px solid var(--line);padding-left:7px}
+.pill{font-size:11px;background:#eee;border-radius:9px;padding:0 7px}
+.mute{color:var(--mute)}
+table{border-collapse:collapse;width:100%;font-size:12px;margin-bottom:6px}
+th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+th{color:var(--mute);font-weight:600}
+.ok{color:#2c8a57;font-weight:600}.bad{color:#b3261e;font-weight:600}
+.drow{display:grid;grid-template-columns:1fr 150px;gap:4px 8px;margin-bottom:8px}
+.drow .lab{grid-column:1/-1;font-size:12px;color:var(--mute)}
+.drow .ev{display:flex;gap:4px}
+.drow .ev button{white-space:nowrap}
+.sect{font-weight:650;margin:12px 0 6px;font-size:12.5px}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1d2430;color:#fff;padding:8px 14px;border-radius:7px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+#toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>Clinical file annotation <span class="mute" style="font-weight:400" id="cbver">demo</span></h1>
+  <label>Donor <select id="donor"></select></label>
+  <label>Rater <input id="rater" type="text" size="9"></label>
+  <label>Export CSV:
+    <a id="x_obs" href="#">observations</a> ·
+    <a id="x_med" href="#">treatment</a> ·
+    <a id="x_meas" href="#">measurements</a></label>
+  <span id="status">–</span>
+</header>
+<main>
+  <section id="left">
+    <div id="doclist"></div>
+  </section>
+
+  <section id="mid">
+    <div id="docbar">
+      <div class="title" id="doctitle"></div>
+      <div class="sub" id="docsub"></div>
+      <div style="margin-top:4px">
+        <label><input type="checkbox" id="f_norel"> no relevant clinical information (skip)</label>
+        <label><input type="checkbox" id="f_illeg"> poorly legible / incomplete</label>
+        <label><input type="checkbox" id="f_trauma"> trauma history explicitly asked about</label>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="hl-symptom">symptom</span><span class="hl-diagnosis">diagnosis</span><span class="hl-event">event</span>
+      <span class="hl-substance">substance</span><span class="hl-medication">medication</span><span class="hl-measurement">measurement</span>
+      · select text to attach it as evidence, click a highlight to edit it
+    </div>
+    <div id="reader"></div>
+  </section>
+
+  <section id="right">
+    <nav id="tabs">
+      <button data-tab="obs" class="on">Observations</button>
+      <button data-tab="med">Treatment</button>
+      <button data-tab="meas">Measurements</button>
+      <button data-tab="donor">Donor</button>
+      <button data-tab="sum">Derived</button>
+    </nav>
+
+    <!-- OBSERVATIONS -->
+    <div class="tab" id="tab-obs">
+      <div class="selbar" id="selbar_obs">Select text in the document to use it as evidence, or type a quote.</div>
+      <div class="grid">
+        <label>Type <select id="o_type"></select></label>
+        <label id="w_item">Item <select id="o_item"></select></label>
+        <label id="w_label" hidden>Label (as written) <input type="text" id="o_label" list="dx_list"></label>
+        <label id="w_system" hidden>Classification system named <select id="o_system"></select></label>
+        <label class="chk" id="w_instr" hidden><input type="checkbox" id="o_instr"> formal instrument used (e.g. SCID-5-PD, SIDP)</label>
+        <label>Certainty <select id="o_certainty"></select></label>
+        <label>Asserted by <select id="o_by"></select></label>
+        <label id="w_by_other" hidden>Specify who <input type="text" id="o_by_other"></label>
+        <label id="w_sev"><span id="o_sev_lab">Severity</span> <select id="o_sev"></select></label>
+        <div class="hint full" id="o_anchor"></div>
+        <div class="grid full" id="o_extra"></div>
+        <label>Period from <input type="text" id="o_from" list="period_list" placeholder="e.g. 1998, 1998-05 or childhood, unspecified"></label>
+        <label>Period to <input type="text" id="o_to" list="period_list" placeholder="blank = ongoing / unknown"></label>
+        <label class="chk"><input type="checkbox" id="o_approx"> approximate period (e.g. "al jaren")</label>
+        <label>Timing of the account <select id="o_temp"></select></label>
+        <label>Mentioned as <select id="o_recap"></select></label>
+        <label>Change stated in this document <select id="o_change"></select></label>
+        <label class="chk full"><input type="checkbox" id="o_first"> document explicitly says this is the first observation / onset</label>
+        <label class="full">Evidence text (mandatory) <textarea id="o_evidence"></textarea></label>
+      </div>
+      <div class="btns">
+        <button class="pri" id="o_save">Add observation</button>
+        <button class="sec" id="o_cancel" hidden>Cancel edit</button>
+        <button class="sec danger" id="o_del" hidden>Delete</button>
+      </div>
+      <h3>Observations <label style="font-weight:400;font-size:12px;margin-left:8px"><input type="checkbox" id="o_all"> all documents</label></h3>
+      <div id="o_list"></div>
+    </div>
+
+    <!-- MEDICATION -->
+    <div class="tab" id="tab-med" hidden>
+      <div class="selbar" id="selbar_med">Select the sentence that mentions the treatment (drug, ECT, psychotherapy or intensified treatment).</div>
+      <div class="grid">
+        <label>Treatment <select id="m_drug"></select></label>
+        <label id="w_m_other" hidden>Treatment name (other) <input type="text" id="m_other"></label>
+        <label>Start <input type="text" id="m_start" placeholder="year or date"></label>
+        <label>Stop <input type="text" id="m_stop" placeholder="blank = unknown / ongoing"></label>
+        <label>Dose <input type="text" id="m_dose" placeholder="e.g. 300 mg/day"></label>
+        <label>Indication <input type="text" id="m_ind"></label>
+        <label>Reason stopped <select id="m_reason"></select></label>
+        <label>Effect, as documented <select id="m_effect"></select></label>
+        <label>Adequate trial documented <select id="m_adequate"></select></label>
+        <label class="full">Evidence text (mandatory) <textarea id="m_evidence"></textarea></label>
+      </div>
+      <div class="btns">
+        <button class="pri" id="m_save">Add treatment</button>
+        <button class="sec" id="m_cancel" hidden>Cancel edit</button>
+        <button class="sec danger" id="m_del" hidden>Delete</button>
+      </div>
+      <h3>Treatment trials</h3>
+      <div id="m_list"></div>
+    </div>
+
+    <!-- MEASUREMENTS -->
+    <div class="tab" id="tab-meas" hidden>
+      <div class="selbar" id="selbar_meas">Select the sentence with the score.</div>
+      <div class="grid">
+        <label>Instrument <select id="s_instr"></select></label>
+        <label id="w_s_other" hidden>Instrument (other) <input type="text" id="s_other"></label>
+        <label>Value <input type="text" id="s_value" placeholder="number or range, e.g. 45-50"></label>
+        <label>Date / year <input type="text" id="s_date"></label>
+        <label class="full">Evidence text (mandatory) <textarea id="s_evidence"></textarea></label>
+      </div>
+      <div class="btns">
+        <button class="pri" id="s_save">Add measurement</button>
+        <button class="sec" id="s_cancel" hidden>Cancel edit</button>
+        <button class="sec danger" id="s_del" hidden>Delete</button>
+      </div>
+      <h3>Measurements</h3>
+      <div id="s_list"></div>
+    </div>
+
+    <!-- DONOR LEVEL -->
+    <div class="tab" id="tab-donor" hidden>
+      <div class="selbar" id="selbar_donor">Select text, then use "paste selection" next to a field.</div>
+      <div id="donorform"></div>
+    </div>
+
+    <!-- DERIVED -->
+    <div class="tab" id="tab-sum" hidden>
+      <div class="btns" style="margin-top:0"><button class="sec" id="sum_refresh">Refresh</button></div>
+      <div id="sumout"></div>
+    </div>
+  </section>
+</main>
+<datalist id="dx_list"></datalist>
+<datalist id="period_list"></datalist>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const opts=(arr,ph)=>(ph!==undefined?`<option value="">${esc(ph)}</option>`:'')+arr.map(o=>typeof o==='string'?`<option>${esc(o)}</option>`:`<option value="${esc(o.v)}">${esc(o.t)}</option>`).join('');
+
+let V, donors=[], donorId=null, docs=[], doc=null, ann=null, sel=null, tab='obs', saveTimer=null;
+const draft={obs:{},med:{},meas:{}};        // id, doc, start, end, text for the form being edited
+const EV={obs:'o_evidence',med:'m_evidence',meas:'s_evidence'};
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2200)};
+const docDate=id=>(docs.find(d=>d.id===id)||{}).date||'?';
+const itemMeta=id=>V.items.find(i=>i.id===id);
+const selVals=el=>{el=typeof el==='string'?$(el):el; return [...el.selectedOptions].map(o=>o.value).filter(v=>v!=='')};
+const setVals=(el,vals)=>{el=typeof el==='string'?$(el):el; [...el.options].forEach(o=>o.selected=vals.includes(o.value)); if(!el.multiple&&!vals.length) el.value=''};
+
+/* ---------- init ---------- */
+async function init(){
+  V=await (await fetch('/api/vocab')).json();
+  donors=await (await fetch('/api/donors')).json();
+  $('#dx_list').innerHTML=V.diagnoses.map(d=>`<option value="${esc(d)}">`).join('');
+  $('#period_list').innerHTML=V.periods.map(d=>`<option value="${esc(d)}">`).join('');
+  $('#cbver').textContent='codebook '+V.version;
+  $('#rater').value=localStorage.getItem('rater')||'rater1';
+  $('#donor').innerHTML=opts(donors.map(d=>d.id));
+  buildForms();
+  $('#donor').onchange=()=>loadDonor($('#donor').value);
+  let curRater=$('#rater').value;
+  $('#rater').onchange=()=>{
+    const v=$('#rater').value.replace(/[^A-Za-z0-9_-]/g,'')||'rater1'; $('#rater').value=v;
+    if(v===curRater) return;                  // blur fires 'change' again: ignore if nothing changed
+    curRater=v; localStorage.setItem('rater',v); loadDonor(donorId)};
+  $$('#tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+  $('#reader').addEventListener('mouseup',onReaderMouseUp);
+  $('#f_norel').onchange=$('#f_illeg').onchange=$('#f_trauma').onchange=saveFlags;
+  await loadDonor(donors[0].id);
+}
+
+let loadToken=0, docToken=0;
+async function loadDonor(id){
+  const tok=++loadToken;
+  donorId=id; docs=donors.find(d=>d.id===id).docs;
+  const r=encodeURIComponent($('#rater').value);
+  const fetched=await (await fetch(`/api/annotations/${id}?rater=${r}`)).json();
+  if(tok!==loadToken) return;                 // a newer load started: drop this one
+  ann=fetched;
+  ['observations','medications','measurements'].forEach(k=>ann[k]=ann[k]||[]);
+  ann.doc_flags=ann.doc_flags||{}; ann.donor_level=ann.donor_level||{};
+  $('#x_obs').href=`/api/export/${id}/observations.csv?rater=${r}`;
+  $('#x_med').href=`/api/export/${id}/medications.csv?rater=${r}`;
+  $('#x_meas').href=`/api/export/${id}/measurements.csv?rater=${r}`;
+  renderDonorForm(); renderLists();
+  await openDoc(docs[0].id);
+}
+
+function setTab(t){
+  tab=t;
+  $$('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  $$('.tab').forEach(x=>x.hidden=x.id!=='tab-'+t);
+  if(t==='sum') loadSummary();
+}
+
+/* ---------- persistence ---------- */
+function save(){
+  $('#status').textContent='saving…';
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    const r=encodeURIComponent($('#rater').value);
+    try{
+      const res=await fetch(`/api/annotations/${donorId}?rater=${r}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(ann)});
+      $('#status').textContent=res.ok?'saved '+new Date().toLocaleTimeString():'save failed';
+    }catch(e){$('#status').textContent='save failed'}
+  },350);
+}
+
+/* ---------- documents + reader ---------- */
+function renderDocList(){
+  $('#doclist').innerHTML=docs.map(d=>{
+    const n=[...ann.observations,...ann.medications,...ann.measurements].filter(x=>x.doc===d.id).length;
+    const skip=(ann.doc_flags[d.id]||{}).no_relevant;
+    return `<div class="doc ${doc&&doc.id===d.id?'active':''} ${skip?'skip':''}" data-id="${d.id}">
+      ${n?`<span class="n">${n}</span>`:''}<div class="d">${esc(d.date)}</div><div class="t">${esc(d.type)}<br>${esc(d.author)}</div></div>`}).join('');
+  $$('.doc').forEach(e=>e.onclick=()=>openDoc(e.dataset.id));
+}
+
+async function openDoc(id){
+  const tok=++docToken, forDonor=donorId;
+  const r=await (await fetch(`/api/doc/${donorId}/${id}`)).json();
+  if(tok!==docToken||forDonor!==donorId) return;   // stale response
+  doc={id,meta:r.meta,text:r.text};
+  $('#doctitle').textContent=`${r.meta.datum||''} · ${r.meta.type||''}`;
+  $('#docsub').textContent=`author: ${r.meta.auteur||'?'} · ${donorId} / ${id}`;
+  const fl=ann.doc_flags[id]||{}; $('#f_norel').checked=!!fl.no_relevant; $('#f_illeg').checked=!!fl.illegible; $('#f_trauma').checked=!!fl.trauma_assessed;
+  sel=null; resetForms(); renderDocList(); renderReader(); renderLists();
+  $('#mid').scrollTop=0;
+}
+
+function saveFlags(){
+  ann.doc_flags[doc.id]={no_relevant:$('#f_norel').checked,illegible:$('#f_illeg').checked,trauma_assessed:$('#f_trauma').checked};
+  renderDocList(); save();
+}
+
+function highlights(){
+  const out=[];
+  ann.observations.filter(o=>o.doc===doc.id&&o.start!=null).forEach(o=>out.push({kind:'obs',id:o.id,start:o.start,end:o.end,cls:o.type}));
+  ann.medications.filter(o=>o.doc===doc.id&&o.start!=null).forEach(o=>out.push({kind:'med',id:o.id,start:o.start,end:o.end,cls:'medication'}));
+  ann.measurements.filter(o=>o.doc===doc.id&&o.start!=null).forEach(o=>out.push({kind:'meas',id:o.id,start:o.start,end:o.end,cls:'measurement'}));
+  return out;
+}
+
+function renderReader(){
+  const text=doc.text, hs=highlights(), rd=$('#reader');
+  const cuts=new Set([0,text.length]); hs.forEach(h=>{cuts.add(h.start);cuts.add(h.end)});
+  const pts=[...cuts].filter(p=>p>=0&&p<=text.length).sort((a,b)=>a-b);
+  rd.textContent='';
+  const editing=draft.obs.id||draft.med.id||draft.meas.id;
+  for(let i=0;i<pts.length-1;i++){
+    const a=pts[i],b=pts[i+1]; if(a===b) continue;
+    const cover=hs.filter(h=>h.start<=a&&h.end>=b);
+    if(!cover.length){rd.appendChild(document.createTextNode(text.slice(a,b)));continue}
+    const sp=document.createElement('span'); sp.className='hl hl-'+cover[0].cls+(cover.some(c=>c.id===editing)?' active':'');
+    sp.dataset.kind=cover[0].kind; sp.dataset.id=cover[0].id; sp.textContent=text.slice(a,b);
+    sp.title=cover.length>1?`${cover.length} annotations overlap here`:'click to edit';
+    rd.appendChild(sp);
+  }
+}
+
+function offsetOf(node,off){
+  const r=document.createRange(); r.selectNodeContents($('#reader')); r.setEnd(node,off); return r.toString().length;
+}
+function onReaderMouseUp(e){
+  const s=getSelection();
+  if(!s.rangeCount||s.isCollapsed){
+    const sp=e.target.closest&&e.target.closest('.hl'); if(sp) editFromHighlight(sp.dataset.kind,sp.dataset.id); return;
+  }
+  const r=s.getRangeAt(0); if(!$('#reader').contains(r.commonAncestorContainer)) return;
+  let a=offsetOf(r.startContainer,r.startOffset), b=offsetOf(r.endContainer,r.endOffset);
+  while(a<b&&/\s/.test(doc.text[a])) a++; while(b>a&&/\s/.test(doc.text[b-1])) b--;
+  if(a>=b) return;
+  sel={doc:doc.id,start:a,end:b,text:doc.text.slice(a,b)};
+  const msg=`Selected: “${sel.text.length>200?sel.text.slice(0,200)+'…':sel.text}”`;
+  ['obs','med','meas','donor'].forEach(k=>$('#selbar_'+k).textContent=msg);
+  applySelection();
+}
+function applySelection(){
+  if(!sel||!EV[tab]) return;
+  draft[tab]={...draft[tab],doc:sel.doc,start:sel.start,end:sel.end,text:sel.text};
+  $('#'+EV[tab]).value=sel.text;
+  getSelection().removeAllRanges(); renderReader();
+}
+Object.keys(EV).forEach(k=>document.addEventListener('DOMContentLoaded',()=>{
+  $('#'+EV[k]).addEventListener('input',e=>{if(draft[k].start!=null&&e.target.value!==draft[k].text){draft[k].start=draft[k].end=null;renderReader()}});
+}));
+
+/* ---------- forms ---------- */
+function buildForms(){
+  $('#o_type').innerHTML=opts(V.types);
+  $('#o_system').innerHTML=opts(V.systems);
+  $('#o_by').innerHTML=opts(V.asserted_by);
+  $('#o_temp').innerHTML=opts(['contemporaneous','retrospective (recalled / reported later)']);
+  $('#o_recap').innerHTML=opts(['new in this document','recapitulated from earlier']);
+  $('#o_change').innerHTML=opts(V.changes);
+  $('#o_type').onchange=()=>{$('#o_item').value='';refreshObs()};
+  $('#o_item').onchange=refreshObs; $('#o_certainty').onchange=refreshObs; $('#o_by').onchange=refreshObs;
+  $('#o_save').onclick=saveObs; $('#o_cancel').onclick=()=>{resetForms();renderReader();renderLists()}; $('#o_del').onclick=()=>delItem('obs');
+  $('#o_all').onchange=renderLists;
+  refreshObs();
+  // medication
+  const groups={}; V.drugs.forEach(d=>(groups[d.cls]=groups[d.cls]||[]).push(d.name));
+  $('#m_drug').innerHTML='<option value="">— choose —</option>'+Object.entries(groups).map(([c,ns])=>`<optgroup label="${esc(c)}">${ns.map(n=>`<option>${esc(n)}</option>`).join('')}</optgroup>`).join('')+'<option value="other">other (specify)</option>';
+  $('#m_reason').innerHTML=opts(V.stop_reasons,'—');
+  $('#m_effect').innerHTML=opts(V.effects,'—');
+  $('#m_adequate').innerHTML=opts(['yes','no','ND'],'—');
+  $('#m_drug').onchange=()=>$('#w_m_other').hidden=$('#m_drug').value!=='other';
+  $('#m_save').onclick=saveMed; $('#m_cancel').onclick=()=>{resetForms();renderReader();renderLists()}; $('#m_del').onclick=()=>delItem('med');
+  // measurement
+  $('#s_instr').innerHTML='<option value="">— choose —</option>'+V.instruments.map(i=>`<option>${esc(i)}</option>`).join('');
+  $('#s_instr').onchange=()=>$('#w_s_other').hidden=!$('#s_instr').value.startsWith('other');
+  $('#s_save').onclick=saveMeas; $('#s_cancel').onclick=()=>{resetForms();renderReader();renderLists()}; $('#s_del').onclick=()=>delItem('meas');
+}
+
+function refreshObs(){
+  const type=$('#o_type').value, isDx=type==='diagnosis';
+  const curItem=$('#o_item').value, curCert=$('#o_certainty').value;
+  const groups={}; V.items.filter(i=>i.type===type).forEach(i=>(groups[i.domain]=groups[i.domain]||[]).push(i));
+  $('#o_item').innerHTML='<option value="">— choose —</option>'+Object.entries(groups).map(([d,its])=>`<optgroup label="${esc(d)}">${its.map(i=>`<option value="${i.id}">${'\u00a0\u00a0\u00a0'.repeat(i.depth)}${esc(i.label)}</option>`).join('')}</optgroup>`).join('');
+  $('#o_item').value=curItem;
+  $('#o_certainty').innerHTML=opts(V.certainty[type]); if(V.certainty[type].includes(curCert)) $('#o_certainty').value=curCert;
+  const it=itemMeta($('#o_item').value);
+  const scale=it?it.scale:[], curSev=selVals('#o_sev');
+  if(refreshObs.item!==(it&&it.id)){                // rebuild the scale only when the item changes
+    refreshObs.item=it&&it.id;
+    $('#o_sev').multiple=!!(it&&it.multi);
+    $('#o_sev').innerHTML=(it&&it.multi?'':'<option value="">—</option>')+scale.map(c=>`<option value="${esc(c.v)}">${esc(c.t)}</option>`).join('');
+    setVals('#o_sev',curSev);
+    $('#o_sev_lab').textContent=it?it.scale_label:'Severity';
+    $('#o_extra').innerHTML=(it?it.extra:[]).map(x=>`<label class="${x.multi?'full':''}">${esc(x.label)}${x.multi?' (ctrl/cmd-click for several)':''}
+      <select data-x="${esc(x.id)}" ${x.multi?'multiple size="4"':''}>${x.multi?'':'<option value="">—</option>'}${x.choices.map(c=>`<option>${esc(c)}</option>`).join('')}</select></label>`).join('');
+  }
+  $('#w_item').hidden=isDx;
+  $('#w_label').hidden=!(isDx||(it&&it.needs_label)); $('#w_system').hidden=!isDx; $('#w_instr').hidden=!isDx;
+  $('#w_by_other').hidden=$('#o_by').value!=='other';
+  const absent=['explicitly absent','ruled out'].includes($('#o_certainty').value);
+  const hasZero=scale.some(c=>c.v==='0');
+  $('#w_sev').hidden=isDx||!scale.length;
+  if(!isDx){ if(absent&&hasZero){$('#o_sev').value='0';$('#o_sev').disabled=true}else{$('#o_sev').disabled=false} }
+  $('#o_anchor').hidden=isDx;
+  const kidsOf=it?V.items.filter(k=>k.parent===it.id):[];
+  $('#o_anchor').textContent=it?`${it.path.length?it.path.join(' › ')+' › '+it.label+'. ':''}${it.definition?it.definition+' ':''}${it.synonyms?'Also written as: '+it.synonyms.split('|').join(', ')+'. ':''}${kidsOf.length?'Pick a subclass if the document names one ('+kidsOf.map(k=>k.label).join(', ')+'). ':''}${it.scale.length?it.scale_label+': ':''}${it.anchors}`:
+    'Choose an item to see its definition and scale. 0 = absent or resolved (e.g. a later note says the symptom has gone); ND = present, level not stated.';
+}
+
+function resetForms(){
+  draft.obs={};draft.med={};draft.meas={};
+  // observation: keep type/certainty/asserted-by as sticky defaults, set asserted-by from document author
+  $('#o_item').value='';$('#o_label').value='';$('#o_by_other').value='';setVals('#o_sev',[]);
+  ['o_from','o_to','o_evidence'].forEach(i=>$('#'+i).value='');
+  $('#o_approx').checked=false;$('#o_first').checked=false;$('#o_instr').checked=false;$('#o_change').value='none stated';
+  $('#o_temp').selectedIndex=0;$('#o_recap').selectedIndex=0;
+  if(doc){const a=V.author_map[(doc.meta.auteur||'').toLowerCase()]; $('#o_by').value=a||'other'; if(!a) $('#o_by_other').value=doc.meta.auteur||''}
+  refreshObs();
+  ['m_drug','m_reason','m_effect','m_adequate'].forEach(i=>$('#'+i).value='');
+  ['m_other','m_start','m_stop','m_dose','m_ind','m_evidence','s_other','s_value','s_date','s_evidence'].forEach(i=>$('#'+i).value='');
+  $('#s_instr').value=''; $('#w_m_other').hidden=true; $('#w_s_other').hidden=true;
+  ['o','m','s'].forEach(p=>{$('#'+p+'_cancel').hidden=true;$('#'+p+'_del').hidden=true});
+  $('#o_save').textContent='Add observation';$('#m_save').textContent='Add treatment';$('#s_save').textContent='Add measurement';
+}
+
+function needEvidence(k){
+  const v=$('#'+EV[k]).value.trim(); if(!v){toast('Evidence text is mandatory — select text in the document or type a quote.');return null}
+  return v;
+}
+function anchor(k,id){
+  const d=draft[k];
+  return {id:d.id||uid(),doc:d.doc||doc.id,start:d.start??null,end:d.end??null};
+}
+function upsert(list,obj){const i=list.findIndex(x=>x.id===obj.id); if(i>=0) list[i]=obj; else list.push(obj)}
+function afterChange(){save();resetForms();renderLists();renderReader();renderDocList()}
+
+function saveObs(){
+  const type=$('#o_type').value, isDx=type==='diagnosis';
+  const item=isDx?'diagnosis':$('#o_item').value, it=itemMeta(item);
+  if(!item){toast('Choose an item');return}
+  const label=$('#o_label').value.trim();
+  if((isDx||(it&&it.needs_label))&&!label){toast('Label is required');return}
+  const cert=$('#o_certainty').value, by=$('#o_by').value;
+  if(by==='other'&&!$('#o_by_other').value.trim()){toast('Specify who made the statement');return}
+  const hasScale=!isDx&&it&&it.scale.length;
+  let sev=isDx?'':!hasScale?'1':selVals('#o_sev').join('; ');
+  if(cert==='explicitly absent'&&hasScale&&it.scale.some(c=>c.v==='0')) sev='0';
+  if(hasScale&&sev===''){toast(`Choose a value for ${it.scale_label.toLowerCase()} (or ND if not stated)`);return}
+  const extra={}; $$('#o_extra [data-x]').forEach(el=>{const v=selVals(el); if(v.length) extra[el.dataset.x]=v.join('; ')});
+  const ev=needEvidence('obs'); if(!ev) return;
+  const o={...anchor('obs'),type,item,label,system:isDx?$('#o_system').value:'',certainty:cert,asserted_by:by,asserted_other:by==='other'?$('#o_by_other').value.trim():'',
+    severity:sev,period_from:$('#o_from').value.trim(),period_to:$('#o_to').value.trim(),period_approx:$('#o_approx').checked,
+    temporality:$('#o_temp').value,recap:$('#o_recap').value,first_obs:$('#o_first').checked,change:$('#o_change').value,formal_instrument:isDx&&$('#o_instr').checked,extra,evidence:ev,created:new Date().toISOString()};
+  upsert(ann.observations,o); afterChange(); toast('Observation saved');
+}
+function saveMed(){
+  let drug=$('#m_drug').value; if(!drug){toast('Choose a treatment');return}
+  if(drug==='other'&&!$('#m_other').value.trim()){toast('Enter the treatment name');return}
+  const ev=needEvidence('med'); if(!ev) return;
+  const m={...anchor('med'),drug,drug_other:drug==='other'?$('#m_other').value.trim():'',start:$('#m_start').value.trim(),stop:$('#m_stop').value.trim(),
+    dose:$('#m_dose').value.trim(),indication:$('#m_ind').value.trim(),stop_reason:$('#m_reason').value,effect:$('#m_effect').value,adequate:$('#m_adequate').value,evidence:ev};
+  upsert(ann.medications,m); afterChange(); toast('Treatment saved');
+}
+function saveMeas(){
+  const ins=$('#s_instr').value; if(!ins){toast('Choose an instrument');return}
+  if(ins.startsWith('other')&&!$('#s_other').value.trim()){toast('Name the instrument');return}
+  if(!$('#s_value').value.trim()){toast('Enter a value');return}
+  const ev=needEvidence('meas'); if(!ev) return;
+  const m={...anchor('meas'),instrument:ins.startsWith('other')?$('#s_other').value.trim():ins,value:$('#s_value').value.trim(),date:$('#s_date').value.trim(),evidence:ev};
+  upsert(ann.measurements,m); afterChange(); toast('Measurement saved');
+}
+function delItem(k){
+  const map={obs:'observations',med:'medications',meas:'measurements'};
+  ann[map[k]]=ann[map[k]].filter(x=>x.id!==draft[k].id); afterChange(); toast('Deleted');
+}
+
+/* ---------- editing existing ---------- */
+async function editFromHighlight(kind,id){ await edit(kind,id) }
+async function edit(kind,id){
+  const map={obs:'observations',med:'medications',meas:'measurements'};
+  const x=ann[map[kind]].find(y=>y.id===id); if(!x) return;
+  if(x.doc!==doc.id) await openDoc(x.doc);
+  setTab(kind); resetForms();
+  draft[kind]={id:x.id,doc:x.doc,start:x.start,end:x.end,text:x.evidence};
+  if(kind==='obs'){
+    $('#o_type').value=x.type; refreshObs(); $('#o_item').value=x.item; refreshObs();
+    $('#o_label').value=x.label||''; $('#o_system').value=x.system||''; $('#o_certainty').value=x.certainty; $('#o_by').value=x.asserted_by;
+    $('#o_by_other').value=x.asserted_other||''; $('#o_from').value=x.period_from||''; $('#o_to').value=x.period_to||'';
+    $('#o_approx').checked=!!x.period_approx; $('#o_temp').value=x.temporality; $('#o_recap').value=x.recap; $('#o_first').checked=!!x.first_obs; $('#o_instr').checked=!!x.formal_instrument;
+    $('#o_change').value=x.change; refreshObs(); setVals('#o_sev',String(x.severity??'').split('; '));
+    Object.entries(x.extra||{}).forEach(([k,v])=>{const el=$(`#o_extra [data-x="${k}"]`); if(el) setVals(el,v.split('; '))});
+  }else if(kind==='med'){
+    $('#m_drug').value=x.drug; $('#w_m_other').hidden=x.drug!=='other'; $('#m_other').value=x.drug_other||'';
+    $('#m_start').value=x.start||'';$('#m_stop').value=x.stop||'';$('#m_dose').value=x.dose||'';$('#m_ind').value=x.indication||'';
+    $('#m_reason').value=x.stop_reason||'';$('#m_effect').value=x.effect||'';$('#m_adequate').value=x.adequate||'';
+  }else{
+    const known=V.instruments.includes(x.instrument);
+    $('#s_instr').value=known?x.instrument:V.instruments[V.instruments.length-1]; $('#w_s_other').hidden=known; $('#s_other').value=known?'':x.instrument;
+    $('#s_value').value=x.value||'';$('#s_date').value=x.date||'';
+  }
+  $('#'+EV[kind]).value=x.evidence;
+  const p={obs:'o',med:'m',meas:'s'}[kind];
+  $('#'+p+'_cancel').hidden=false;$('#'+p+'_del').hidden=false;
+  $('#'+p+'_save').textContent='Update';
+  renderLists(); renderReader();
+  const el=document.querySelector(`#reader .hl[data-id="${id}"]`); if(el) el.scrollIntoView({block:'center',behavior:'smooth'});
+}
+
+/* ---------- lists ---------- */
+function obsName(o){ if(o.type==='diagnosis') return o.label; const it=itemMeta(o.item); return (it?it.label:o.item)+(o.label?` (${o.label})`:'') }
+function renderLists(){
+  const all=$('#o_all').checked;
+  const os=ann.observations.filter(o=>all||!doc||o.doc===doc.id).sort((a,b)=>docDate(a.doc).localeCompare(docDate(b.doc))||(a.start??0)-(b.start??0));
+  $('#o_list').innerHTML=os.map(o=>{
+    const asb=o.asserted_by==='other'?o.asserted_other:(V.asserted_by.find(a=>a.v===o.asserted_by)||{}).t;
+    const per=o.period_from||o.period_to?` · period ${esc(o.period_from||'?')}–${esc(o.period_to||'?')}${o.period_approx?' (approx.)':''}`:'';
+    const fl=[o.first_obs?'first obs.':'',o.recap&&o.recap.startsWith('recap')?'recap':'',o.change&&o.change!=='none stated'?'change: '+o.change:'',o.temporality&&o.temporality.startsWith('retro')?'retrospective':''].filter(Boolean).map(f=>`<span class="pill">${f}</span>`).join(' ');
+    return `<div class="card c-${o.type} ${draft.obs.id===o.id?'active':''}" data-kind="obs" data-id="${o.id}">
+      <div class="top"><b>${esc(obsName(o))}</b><span class="mute">${esc(o.certainty)}${o.severity!==''&&o.type!=='diagnosis'&&(itemMeta(o.item)||{scale:[1]}).scale.length?' · '+esc(o.severity):''}${Object.values(o.extra||{}).map(v=>' · '+esc(v)).join('')}${o.system&&o.type==='diagnosis'?' · '+esc(o.system):''}</span><button class="x" data-del="1">✕</button></div>
+      <div class="m">${esc(docDate(o.doc))} · by ${esc(asb)}${per} ${fl}</div><blockquote>${esc(o.evidence.length>170?o.evidence.slice(0,170)+'…':o.evidence)}</blockquote></div>`}).join('')||'<div class="mute">No observations yet.</div>';
+  $('#m_list').innerHTML=ann.medications.slice().sort((a,b)=>docDate(a.doc).localeCompare(docDate(b.doc))).map(m=>`<div class="card c-medication ${draft.med.id===m.id?'active':''}" data-kind="med" data-id="${m.id}">
+      <div class="top"><b>${esc(m.drug==='other'?m.drug_other:m.drug)}</b><span class="mute">${esc(m.dose||'')}</span><button class="x" data-del="1">✕</button></div>
+      <div class="m">${esc(docDate(m.doc))} · ${esc(m.start||'?')} → ${esc(m.stop||'?')} · effect ${esc((m.effect||'–').split(':')[0])} ${m.stop_reason?'· '+esc(m.stop_reason):''}</div>
+      <blockquote>${esc(m.evidence.slice(0,170))}</blockquote></div>`).join('')||'<div class="mute">No treatment recorded.</div>';
+  $('#s_list').innerHTML=ann.measurements.slice().sort((a,b)=>docDate(a.doc).localeCompare(docDate(b.doc))).map(m=>`<div class="card c-measurement ${draft.meas.id===m.id?'active':''}" data-kind="meas" data-id="${m.id}">
+      <div class="top"><b>${esc(m.instrument)}</b><span>${esc(m.value)}</span><button class="x" data-del="1">✕</button></div>
+      <div class="m">${esc(docDate(m.doc))}${m.date?' · measured '+esc(m.date):''}</div><blockquote>${esc(m.evidence.slice(0,170))}</blockquote></div>`).join('')||'<div class="mute">No measurements recorded.</div>';
+  $$('.card').forEach(c=>c.onclick=e=>{
+    if(e.target.dataset.del){ draft[c.dataset.kind]={id:c.dataset.id}; delItem(c.dataset.kind); e.stopPropagation(); return }
+    edit(c.dataset.kind,c.dataset.id)});
+}
+
+/* ---------- donor-level ---------- */
+function renderDonorForm(){
+  let html='',sect='';
+  V.donor_fields.forEach(f=>{
+    if(f.section!==sect){sect=f.section;html+=`<div class="sect">${esc(sect)}</div>`}
+    const cur=ann.donor_level[f.id]||{value:'',evidence:''};
+    const input=f.kind==='select'?`<select data-f="${f.id}">${opts(f.options,'—')}</select>`:
+      `<input type="${f.kind==='number'?'number':'text'}" data-f="${f.id}" ${f.list?`list="${f.list}"`:''}>`;
+    html+=`<div class="drow"><div class="lab">${esc(f.label)}</div>${input}<div class="ev"><button class="sec" data-paste="${f.id}" type="button">paste selection</button></div>
+      <input type="text" class="full-ev" data-ev="${f.id}" placeholder="evidence text (mandatory)" style="grid-column:1/-1"></div>`;
+  });
+  $('#donorform').innerHTML=html;
+  V.donor_fields.forEach(f=>{
+    const cur=ann.donor_level[f.id]||{value:'',evidence:''};
+    $(`[data-f="${f.id}"]`).value=cur.value; $(`[data-ev="${f.id}"]`).value=cur.evidence;
+  });
+  $$('#donorform [data-f],#donorform [data-ev]').forEach(el=>el.onchange=()=>{
+    const id=el.dataset.f||el.dataset.ev;
+    ann.donor_level[id]={value:$(`[data-f="${id}"]`).value,evidence:$(`[data-ev="${id}"]`).value}; save();
+  });
+  $$('#donorform [data-paste]').forEach(b=>b.onclick=()=>{
+    if(!sel){toast('Select text in the document first');return}
+    const id=b.dataset.paste, e=$(`[data-ev="${id}"]`);
+    e.value=(e.value?e.value+' | ':'')+`[${docDate(sel.doc)}] ${sel.text}`; e.onchange();
+  });
+}
+
+/* ---------- derived ---------- */
+async function loadSummary(){
+  const r=encodeURIComponent($('#rater').value);
+  const s=await (await fetch(`/api/summary/${donorId}?rater=${r}`)).json();
+  const tbl=(head,rows)=>`<table><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
+  const v=x=>x===null||x===undefined||x===''?'–':esc(x);
+  let h=`<p class="mute">Everything below is computed from the log; nothing here is entered by the rater.</p>
+   <div class="sect">Progress</div><p>${s.n_observations} observations · ${s.n_medications} treatment rows · ${s.n_measurements} measurements · ${s.n_docs} documents (${s.n_relevant} not skipped)<br>
+   Not yet touched: ${s.todo.length?s.todo.map(t=>esc(t.date)).join(', '):'<span class="ok">none</span>'}</p>`;
+  h+=`<div class="sect">Symptom domains (peak severity; share of documents with the domain present)</div>`+
+    (s.domains.length?tbl(['Domain','Peak','Docs','Share','First year'],s.domains.map(d=>[esc(d.domain),v(d.peak),`${d.docs_present}/${d.docs_relevant}`,d.share,v(d.first_year)])):'<p class="mute">No symptoms recorded yet.</p>');
+  h+=`<div class="sect">Items and diagnoses</div>`+
+    (s.items.length?tbl(['Item','Present','Susp.','Absent','Peak','First yr','Last doc','Notes'],s.items.map(i=>[`${esc(i.name)}<br><span class="mute">${esc(i.type)}</span>`,i.n_present,i.n_suspected,i.n_absent,v(i.peak),`${v(i.first_year)}<br><span class="mute">${esc(i.first_year_basis)}</span>`,v(i.last_doc_year),
+      [i.first_stated.length?'first stated: '+esc(i.first_stated.join('; ')):'',i.changes.length?'changes: '+esc(i.changes.join('; ')):'',i.n_present&&!i.new_evidence_rows?'<span class="bad">recap only</span>':''].filter(Boolean).join('<br>')])):'<p class="mute">Nothing recorded yet.</p>');
+  h+=`<div class="sect">Class hierarchy (each parent rolls up its own rows and its subclasses)</div>`+
+    (s.hierarchy.length?tbl(['Class','Peak','Docs','Unspecified rows','Subclasses named'],s.hierarchy.map(x=>[esc(x.name),v(x.peak),x.n_docs,x.n_unspecified,esc(x.subclasses.join(', ')||'–')])):'<p class="mute">No parent classes with rows yet.</p>');
+  h+=`<div class="sect">Treatment trials</div>`+
+    (s.medications.length?tbl(['Drug','Class','Start','Stop','Effect'],s.medications.map(m=>[esc(m.name),esc(m.class),v(m.start),v(m.stop),v((m.effect||'').split(':')[0])]))+
+      `<p>Antidepressant trials with no/minimal response (adequacy not denied): <b>${s.antidepressant_nonresponse}</b></p>`:'<p class="mute">No treatment recorded yet.</p>');
+  h+=`<div class="sect">Check against the summary layer (Donor tab)</div>`+
+    (s.validation.length?tbl(['Domain','Rater','Derived','Match'],s.validation.map(x=>[esc(x.domain),esc(x.rater),v(x.derived),x.match===null?'<span class="mute">n/a</span>':x.match?'<span class="ok">yes</span>':'<span class="bad">differs</span>'])):'<p class="mute">Fill in lifetime-worst values on the Donor tab to compare them with the derived peaks.</p>');
+  h+=`<div class="sect">Document coverage</div>${tbl(['Year','Docs'],s.docs_per_year.map(y=>[y.year,y.n]))}`+
+    (s.gaps.length?`<p>Gaps of 3+ years without documents: ${s.gaps.map(g=>`${g.from}→${g.to} (${g.years} y)`).join(', ')}. Silence in these periods is unknown, not absent.</p>`:'');
+  h+=`<div class="sect">Derived variables defined in the codebook (rules; most are not computed in this demo yet)</div>`+
+    tbl(['Variable','Category','Rule'],V.derived.map(d=>[esc(d.variable),esc(d.category),esc(d.rule)]));
+  $('#sumout').innerHTML=h;
+}
+$('#sum_refresh').onclick=loadSummary;
+init();
+</script>
+</body>
+</html>

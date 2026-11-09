@@ -1,0 +1,66 @@
+{
+ "donor": "D003",
+ "rater": "rater1",
+ "codebook_version": "feature_set_v3",
+ "observations": [
+  {
+   "id": "mvi27vw8mzke",
+   "doc": "01_1989-02-10_huisarts",
+   "start": 14,
+   "end": 74,
+   "type": "symptom",
+   "item": "depressed_mood",
+   "label": "",
+   "system": "",
+   "certainty": "present",
+   "asserted_by": "gp",
+   "asserted_other": "",
+   "severity": "2",
+   "period_from": "1989-01-20",
+   "period_to": "",
+   "period_approx": false,
+   "temporality": "contemporaneous",
+   "recap": "new in this document",
+   "first_obs": false,
+   "change": "none stated",
+   "formal_instrument": false,
+   "extra": {},
+   "evidence": "Somber sinds enkele weken na het verbreken van zijn relatie.",
+   "created": "2026-10-21T11:59:40.856Z"
+  }
+ ],
+ "medications": [],
+ "measurements": [],
+ "doc_flags": {},
+ "donor_level": {
+  "birth_year": {
+   "evidence": "",
+   "value": "1965"
+  },
+  "sex": {
+   "evidence": "",
+   "value": "male"
+  },
+  "manner_of_death": {
+   "value": "0: natural",
+   "evidence": "[2023-01-20] Overleden op 15-01-2023 op 57-jarige leeftijd aan een acuut hartinfarct. Natuurlijke dood"
+  },
+  "primary_medical_cause_of_death": {
+   "value": "heart attack",
+   "evidence": "[2023-01-20] Overleden op 15-01-2023 op 57-jarige leeftijd aan een acuut hartinfarct. Natuurlijke dood"
+  },
+  "primary_medical_cause_of_death_icd10_chapter": {
+   "value": "9: diseases of the circulatory system",
+   "evidence": "[2023-01-20] Overleden op 15-01-2023 op 57-jarige leeftijd aan een acuut hartinfarct. Natuurlijke dood"
+  },
+  "psychiatric_contribution_to_death": {
+   "value": "0: none",
+   "evidence": ""
+  },
+  "euthanasia_indication": {
+   "value": "NA: not applicable",
+   "evidence": ""
+  }
+ },
+ "saved_at": "2026-10-21T13:59:41"
+}
